@@ -178,13 +178,14 @@ jobs:
           while IFS= read -r line || [ -n "$line" ]; do
             service=$(echo "$line" | cut -d':' -f1)
             qs=$(echo "$line" | cut -d':' -f2- | xargs)
-            encoded_qs=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$qs'''))")
-            echo "query: ${service}: ${qs}" >> response.txt
+            echo "query: ${service}:${qs}" >> response.txt
+
             echo "response:" >> response.txt
             if [ "$service" = "stocks" ]; then
-              curl "http://localhost:5001/stocks?${encoded_qs}" >> response.txt
+              echo "http://localhost:5001/stocks?${qs}" >> response.txt
+              curl "http://localhost:5001/stocks?${qs}" >> response.txt
             elif [ "$service" = "capital-gains" ]; then
-              curl "http://localhost:5003/capital-gains?${encoded_qs}" >> response.txt
+              curl "http://localhost:5003/capital-gains?${qs}" >> response.txt
             else
               echo "Unknown service" >> response.txt
             fi
