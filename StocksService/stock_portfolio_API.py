@@ -233,7 +233,7 @@ class stockValueID(Resource):
                 return {"error": "Not found"}, 404
             price_per_stock = data['price']
         except Exception as e:
-            return {"server error": str(e)}, 470
+            return {"server error": str(e)}, 500
         request_status, stock_symbol, ticker, value = self.portfolio.stock_value(id=id, ticker=price_per_stock)
         if request_status == 200:
             return {
