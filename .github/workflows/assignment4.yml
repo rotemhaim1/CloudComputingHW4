@@ -1,0 +1,209 @@
+name: assignment4
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      build_success: ${{ steps.set-build-success.outputs.build_success }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Initialize log file with start time and submitters
+        id: init-log
+        run: |
+          # Write the start time (using date -Iminutes) as line 1
+          echo "$(date -Iminutes)" > log.txt
+          # Write the submitter names as line 2 (adjust the names as needed)
+          echo "Alice Example, Bob Example" >> log.txt
+
+      - name: Build Stocks Service Docker image
+        id: build-stocks
+        run: |
+          docker build -t stocks-service:latest -f Dockerfile.stocks .
+
+      - name: Build Capital Gains Service Docker image
+        id: build-capitalgains
+        run: |
+          docker build -t capitalgains-service:latest -f Dockerfile.capitalgains .
+
+      - name: Save Docker images as tar files
+        run: |
+          docker save stocks-service:latest -o stocks-service.tar
+          docker save capitalgains-service:latest -o capitalgains-service.tar
+
+      - name: Append image build success to log
+        run: echo "image successfully built" >> log.txt
+
+      - name: Upload Docker image artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            stocks-service.tar
+            capitalgains-service.tar
+
+      - name: Upload log artifact (build stage)
+        uses: actions/upload-artifact@v4
+        with:
+          name: log
+          path: log.txt
+
+      - name: Set build success output
+        id: set-build-success
+        run: echo "::set-output name=build_success::true"
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    outputs:
+      test_success: ${{ steps.set-test-success.outputs.test_success }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download Docker image artifacts from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: ./images
+
+      - name: Load Stocks Service image
+        run: docker load -i ./images/stocks-service.tar
+
+      - name: Load Capital Gains Service image
+        run: docker load -i ./images/capitalgains-service.tar
+
+      - name: Download log artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: log
+          path: .
+
+      - name: Start Docker Compose
+        id: docker-compose-up
+        run: |
+          # Start the application (stocks, capital gains, MongoDB)
+          docker compose up -d
+          # Give containers time to start (adjust sleep duration if necessary)
+          sleep 10
+          # Check that the stocks-service container is running (adjust container name as needed)
+          if docker ps | grep -q "stocks-service"; then
+            echo "Container up and running" >> log.txt
+          else
+            echo "Container failed to run" >> log.txt
+            exit 1
+          fi
+
+      - name: Run pytest tests
+        id: pytest-run
+        continue-on-error: true
+        run: |
+          # Install pytest and requests (or any needed libraries)
+          pip install pytest requests
+          # Run tests with verbose flag and capture output to file
+          pytest -v tests/assn4_tests.py | tee assn4_test_results.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Append pytest result status to log
+        run: |
+          if grep -q "failed" assn4_test_results.txt; then
+            echo "tests failed" >> log.txt
+          else
+            echo "tests succeeded" >> log.txt
+          fi
+
+      - name: Upload pytest results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: assn4_test_results.txt
+
+      - name: Upload updated log artifact (after tests)
+        uses: actions/upload-artifact@v4
+        with:
+          name: log
+          path: log.txt
+
+      - name: Tear down Docker Compose (test job)
+        if: always()
+        run: docker compose down
+
+      - name: Set test success output
+        id: set-test-success
+        run: |
+          if grep -q "tests succeeded" log.txt; then
+            echo "::set-output name=test_success::true"
+          else
+            echo "::set-output name=test_success::false"
+          fi
+
+  query:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download Docker image artifacts from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: ./images
+
+      - name: Load Stocks Service image
+        run: docker load -i ./images/stocks-service.tar
+
+      - name: Load Capital Gains Service image
+        run: docker load -i ./images/capitalgains-service.tar
+
+      - name: Start Docker Compose for query job
+        run: |
+          docker compose up -d
+          sleep 10
+
+      - name: Issue 6 POST requests to add stocks entries
+        run: |
+          # This loop will post stock1.json to stock6.json (ensure these files exist in tests/)
+          for i in {1..6}; do
+            curl -X POST -H "Content-Type: application/json" -d @tests/stock${i}.json http://localhost:5001/stocks
+          done
+
+      - name: Process query.txt and generate response.txt
+        run: |
+          # Ensure query.txt exists (it will be provided by the tester or placed in your repo for testing)
+          if [ ! -f query.txt ]; then
+            echo "query.txt not found" && exit 1
+          fi
+          rm -f response.txt
+          touch response.txt
+          while IFS= read -r line || [ -n "$line" ]; do
+            # Each line is expected to be in the format: <service-name>:<query-string>
+            service=$(echo "$line" | cut -d':' -f1)
+            querystring=$(echo "$line" | cut -d':' -f2- | xargs)
+            echo "query: ${service}: ${querystring}" >> response.txt
+            echo "response:" >> response.txt
+            if [ "$service" = "stocks" ]; then
+              # Issue GET /stocks request with the query string
+              curl "http://localhost:5001/stocks?${querystring}" >> response.txt
+            elif [ "$service" = "capital-gains" ]; then
+              # Issue GET /capital-gains request with the query string
+              curl "http://localhost:5003/capital-gains?${querystring}" >> response.txt
+            else
+              echo "Unknown service" >> response.txt
+            fi
+            echo "" >> response.txt
+          done < query.txt
+
+      - name: Upload query response artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: query-response
+          path: response.txt
+
+      - name: Tear down Docker Compose (query job)
+        if: always()
+        run: docker compose down
