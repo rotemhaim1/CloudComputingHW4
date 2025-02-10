@@ -178,6 +178,7 @@ jobs:
           while IFS= read -r line || [ -n "$line" ]; do
             service=$(echo "$line" | cut -d':' -f1)
             qs=$(echo "$line" | cut -d':' -f2- | xargs)
+            encoded_qs=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$qs'''))")
             echo "query: ${service}: ${qs}" >> response.txt
             echo "response:" >> response.txt
             if [ "$service" = "stocks" ]; then
