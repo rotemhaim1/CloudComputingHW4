@@ -26,9 +26,9 @@ jobs:
       - name: Save Docker images as tar files
         run: |
           # Save the stocks service image (named "stocks-1a")
-          docker save $(docker compose images -q stocks-1a) -o stocks-1a.tar
+          docker save $(docker compose images -q stocks-1a:latest) -o stocks-1a.tar
           # Save the capital gains service image
-          docker save $(docker compose images -q capital-gains) -o capital-gains.tar
+          docker save $(docker compose images -q capital-gains:latest) -o capital-gains.tar
 
       - name: Append image build success to log
         run: echo "image successfully built" >> log.txt
