@@ -198,7 +198,7 @@ class StocksID(Resource):
         except Exception as e:
             return {"server error": str(e)}, 500
 
-# API_KEY = 'T6x6QsSBjaxT+BssCEg4VQ==wwU7bHC7P9hlXitc'
+API_KEY = 'T6x6QsSBjaxT+BssCEg4VQ==wwU7bHC7P9hlXitc'
 class stockValueID(Resource):
 
     def __init__(self, portfolio):
