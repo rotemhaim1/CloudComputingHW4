@@ -99,7 +99,7 @@ jobs:
         continue-on-error: true
         run: |
           pip install pytest requests
-          pytest -v tests/assn4_tests.py | tee assn4_test_results.txt
+          pytest -s -v tests/assn4_tests.py | tee assn4_test_results.txt
           exit ${PIPESTATUS[0]}
 
       - name: Append pytest result status to log
