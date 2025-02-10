@@ -182,9 +182,9 @@ jobs:
             echo "query: ${service}: ${qs}" >> response.txt
             echo "response:" >> response.txt
             if [ "$service" = "stocks" ]; then
-              curl "http://localhost:5001/stocks?${qs}" >> response.txt
+              curl "http://localhost:5001/stocks?${encoded_qs}" >> response.txt
             elif [ "$service" = "capital-gains" ]; then
-              curl "http://localhost:5003/capital-gains?${qs}" >> response.txt
+              curl "http://localhost:5003/capital-gains?${encoded_qs}" >> response.txt
             else
               echo "Unknown service" >> response.txt
             fi
