@@ -10,30 +10,25 @@ jobs:
       build_success: ${{ steps.set-build-success.outputs.build_success }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Initialize log file with start time and submitters
+      - name: Initialize log file with start time and submitter names
         id: init-log
         run: |
-          # Write the start time (using date -Iminutes) as line 1
           echo "$(date -Iminutes)" > log.txt
-          # Write the submitter names as line 2 (adjust the names as needed)
           echo "Alice Example, Bob Example" >> log.txt
 
-      - name: Build Stocks Service Docker image
-        id: build-stocks
+      - name: Build Docker Images using Docker Compose
         run: |
-          docker build -t stocks-service:latest -f Dockerfile.stocks .
-
-      - name: Build Capital Gains Service Docker image
-        id: build-capitalgains
-        run: |
-          docker build -t capitalgains-service:latest -f Dockerfile.capitalgains .
+          # Build images for all services defined in your docker-compose.yml
+          docker compose build
 
       - name: Save Docker images as tar files
         run: |
-          docker save stocks-service:latest -o stocks-service.tar
-          docker save capitalgains-service:latest -o capitalgains-service.tar
+          # Save the stocks service image (named "stocks-1a")
+          docker save $(docker compose images -q stocks-1a) -o stocks-1a.tar
+          # Save the capital gains service image
+          docker save $(docker compose images -q capital-gains) -o capital-gains.tar
 
       - name: Append image build success to log
         run: echo "image successfully built" >> log.txt
@@ -43,10 +38,11 @@ jobs:
         with:
           name: docker-images
           path: |
-            stocks-service.tar
-            capitalgains-service.tar
+            stocks-1a.tar
+            capital-gains.tar
 
       - name: Upload log artifact (build stage)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: log
@@ -71,11 +67,11 @@ jobs:
           name: docker-images
           path: ./images
 
-      - name: Load Stocks Service image
-        run: docker load -i ./images/stocks-service.tar
+      - name: Load stocks-1a image
+        run: docker load -i ./images/stocks-1a.tar
 
-      - name: Load Capital Gains Service image
-        run: docker load -i ./images/capitalgains-service.tar
+      - name: Load capital gains image
+        run: docker load -i ./images/capital-gains.tar
 
       - name: Download log artifact from build job
         uses: actions/download-artifact@v4
@@ -83,28 +79,26 @@ jobs:
           name: log
           path: .
 
-      - name: Start Docker Compose
+      - name: Start Docker Compose services
         id: docker-compose-up
         run: |
-          # Start the application (stocks, capital gains, MongoDB)
+          # Start the services as defined in your docker-compose.yml
           docker compose up -d
-          # Give containers time to start (adjust sleep duration if necessary)
-          sleep 10
-          # Check that the stocks-service container is running (adjust container name as needed)
-          if docker ps | grep -q "stocks-service"; then
+          # Wait a bit for services to start
+          sleep 15
+          # Verify that the stocks service container is running
+          if docker ps | grep -q "stocks-1a"; then
             echo "Container up and running" >> log.txt
           else
             echo "Container failed to run" >> log.txt
             exit 1
           fi
 
-      - name: Run pytest tests
+      - name: Run pytest tests for stocks service
         id: pytest-run
         continue-on-error: true
         run: |
-          # Install pytest and requests (or any needed libraries)
           pip install pytest requests
-          # Run tests with verbose flag and capture output to file
           pytest -v tests/assn4_tests.py | tee assn4_test_results.txt
           exit ${PIPESTATUS[0]}
 
@@ -154,44 +148,40 @@ jobs:
           name: docker-images
           path: ./images
 
-      - name: Load Stocks Service image
-        run: docker load -i ./images/stocks-service.tar
+      - name: Load stocks-1a image
+        run: docker load -i ./images/stocks-1a.tar
 
-      - name: Load Capital Gains Service image
-        run: docker load -i ./images/capitalgains-service.tar
+      - name: Load capital gains image
+        run: docker load -i ./images/capital-gains.tar
 
-      - name: Start Docker Compose for query job
+      - name: Start Docker Compose services for query job
         run: |
           docker compose up -d
-          sleep 10
+          sleep 15
 
       - name: Issue 6 POST requests to add stocks entries
         run: |
-          # This loop will post stock1.json to stock6.json (ensure these files exist in tests/)
+          # Assumes you have tests/stock1.json ... tests/stock6.json defined
           for i in {1..6}; do
             curl -X POST -H "Content-Type: application/json" -d @tests/stock${i}.json http://localhost:5001/stocks
           done
 
       - name: Process query.txt and generate response.txt
         run: |
-          # Ensure query.txt exists (it will be provided by the tester or placed in your repo for testing)
           if [ ! -f query.txt ]; then
             echo "query.txt not found" && exit 1
           fi
           rm -f response.txt
           touch response.txt
           while IFS= read -r line || [ -n "$line" ]; do
-            # Each line is expected to be in the format: <service-name>:<query-string>
             service=$(echo "$line" | cut -d':' -f1)
-            querystring=$(echo "$line" | cut -d':' -f2- | xargs)
-            echo "query: ${service}: ${querystring}" >> response.txt
+            qs=$(echo "$line" | cut -d':' -f2- | xargs)
+            echo "query: ${service}: ${qs}" >> response.txt
             echo "response:" >> response.txt
             if [ "$service" = "stocks" ]; then
-              # Issue GET /stocks request with the query string
-              curl "http://localhost:5001/stocks?${querystring}" >> response.txt
+              curl "http://localhost:5001/stocks?${qs}" >> response.txt
             elif [ "$service" = "capital-gains" ]; then
-              # Issue GET /capital-gains request with the query string
-              curl "http://localhost:5003/capital-gains?${querystring}" >> response.txt
+              curl "http://localhost:5003/capital-gains?${qs}" >> response.txt
             else
               echo "Unknown service" >> response.txt
             fi
