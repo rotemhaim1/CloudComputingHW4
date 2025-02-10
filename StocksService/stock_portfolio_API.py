@@ -226,6 +226,8 @@ class stockValueID(Resource):
             symbol = stock['symbol']
             url = 'https://api.api-ninjas.com/v1/stockprice?ticker={}'.format(symbol)
             response = requests.get(url, headers={'X-Api-Key': API_KEY})
+            print(f"External API status: {response.status_code}")
+            print(f"External API response: {response.text}")
             data = response.json()
             if not data:
                 return {"error": "Not found"}, 404
