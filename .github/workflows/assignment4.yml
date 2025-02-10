@@ -16,7 +16,7 @@ jobs:
         id: init-log
         run: |
           echo "$(date -Iminutes)" > log.txt
-          echo "Alice Example, Bob Example" >> log.txt
+          echo "Ron Bitton, Rotem Haim" >> log.txt
 
       - name: Build Docker Images using Docker Compose
         run: |

@@ -2,6 +2,7 @@
 
 services:
   stocks-1a:
+    image: stocks-1a:latest
     build:
       context: .  # Point to correct service directory
       dockerfile: ./StocksService/Dockerfile
@@ -17,6 +18,7 @@ services:
 
 
   capital-gains:
+    image: capital-gains:latest
     build:
       context: .  # Correct context for capital-gains service
       dockerfile: CapitalGainsService/Dockerfile
