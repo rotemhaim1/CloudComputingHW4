@@ -59,7 +59,7 @@ jobs:
       test_success: ${{ steps.set-test-success.outputs.test_success }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download Docker image artifacts from build job
         uses: actions/download-artifact@v4
@@ -142,7 +142,7 @@ jobs:
     needs: test
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download Docker image artifacts from build job
         uses: actions/download-artifact@v4
@@ -170,26 +170,43 @@ jobs:
 
       - name: Process query.txt and generate response.txt
         run: |
+          # Initializes response.txt
+          > response.txt
+          
+          # Ensure query.txt exists
           if [ ! -f query.txt ]; then
-            echo "query.txt not found" && exit 1
+            echo "Error: query.txt not found!" >&2
+            exit 1
           fi
-          rm -f response.txt
-          touch response.txt
-          while IFS= read -r line || [ -n "$line" ]; do
-            service=$(echo "$line" | cut -d':' -f1)
-            qs=$(echo "$line" | cut -d':' -f2- | xargs)
-            echo "query: ${service}:${qs}" >> response.txt
 
-            echo "response:" >> response.txt
+          cat query.txt | while read line
+          do
+            
+            # Determines the service and the qs
+            service=$(echo "$line" | cut -d':' -f1)
+            query_string=$(echo "$line" | cut -d':' -f2)
+            base_url=""
+            
             if [ "$service" = "stocks" ]; then
-              curl "http://127.0.0.1:5001/stocks?${qs}" >> response.txt
-            elif [ "$service" = "capital-gains" ]; then
-              curl "http://127.0.0.1:5003/capital-gains?${qs}" >> response.txt
+              base_url="http://localhost:5001/stocks"
             else
-              echo "Unknown service" >> response.txt
+              base_url="http://localhost:5003/capital-gains"
             fi
-            echo "" >> response.txt
-          done < query.txt
+            
+            # Perform GET request for each query string
+            full_url="$base_url?$query_string"
+            response=$(curl -s -w "\nHTTP_CODE:%{http_code}" "$full_url")
+            http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d':' -f2)
+            
+            # Check response code and update the response file
+            echo "query: $line" >> response.txt
+            if [ "$http_code" -eq 200 ]; then
+              echo "response: $(echo "$response" | sed '/HTTP_CODE:/d')" >> response.txt
+            else
+              echo "response: error $http_code" >> response.txt
+            fi
+          
+          done
 
       - name: Upload query response artifact
         if: always()
