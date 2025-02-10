@@ -1,0 +1,41 @@
+#version: '3.8'  # Commented out as version is obsolete
+
+services:
+  stocks-1a:
+    build:
+      context: .  # Point to correct service directory
+      dockerfile: ./StocksService/Dockerfile
+    ports:
+      - "5001:8000"  # Direct access to stocks-1a via port 5001
+    environment:
+      - PORTFOLIO=stocks1a
+    volumes:
+      - ./StocksService:/app  # Mount StocksService code to /app in container
+    restart: always
+    depends_on:
+      - db
+
+
+  capital-gains:
+    build:
+      context: .  # Correct context for capital-gains service
+      dockerfile: CapitalGainsService/Dockerfile
+    ports:
+      - "5003:8080"  # Direct access to capital-gains via port 5003
+    volumes:
+      - ./CapitalGainsService:/app  # Mount CapitalGainsService code to /app
+    restart: always
+    depends_on:
+      - stocks-1a
+
+  db:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
+
+volumes:
+  mongodb_data:

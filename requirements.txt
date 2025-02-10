@@ -1,0 +1,5 @@
+Flask==3.0.3
+Flask-Restful==0.3.10
+Requests==2.32.3
+pymongo==4.10.1
+flask_pymongo==2.3.0
