@@ -170,43 +170,26 @@ jobs:
 
       - name: Process query.txt and generate response.txt
         run: |
-          # Initializes response.txt
-          > response.txt
-          
-          # Ensure query.txt exists
           if [ ! -f query.txt ]; then
-            echo "Error: query.txt not found!" >&2
-            exit 1
+            echo "query.txt not found" && exit 1
           fi
-
-          cat query.txt | while read line
-          do
-            
-            # Determines the service and the qs
+          rm -f response.txt
+          touch response.txt
+          while IFS= read -r line || [ -n "$line" ]; do
             service=$(echo "$line" | cut -d':' -f1)
-            query_string=$(echo "$line" | cut -d':' -f2)
-            base_url=""
-            
+            qs=$(echo "$line" | cut -d':' -f2- | xargs)
+            echo "query: ${service}:${qs}" >> response.txt
+
+            echo "response:" >> response.txt
             if [ "$service" = "stocks" ]; then
-              base_url="http://localhost:5001/stocks"
+              curl -s -w "http://127.0.0.1:5001/stocks?${qs}" >> response.txt
+            elif [ "$service" = "capital-gains" ]; then
+              curl -s -w "http://127.0.0.1:5003/capital-gains?${qs}" >> response.txt
             else
-              base_url="http://localhost:5003/capital-gains"
+              echo "Unknown service" >> response.txt
             fi
-            
-            # Perform GET request for each query string
-            full_url="$base_url?$query_string"
-            response=$(curl -s -w "\nHTTP_CODE:%{http_code}" "$full_url")
-            http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d':' -f2)
-            
-            # Check response code and update the response file
-            echo "query: $line" >> response.txt
-            if [ "$http_code" -eq 200 ]; then
-              echo "response: $(echo "$response" | sed '/HTTP_CODE:/d')" >> response.txt
-            else
-              echo "response: error $http_code" >> response.txt
-            fi
-          
-          done
+            echo "" >> response.txt
+          done < query.txt
 
       - name: Upload query response artifact
         if: always()
