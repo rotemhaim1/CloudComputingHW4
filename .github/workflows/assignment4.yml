@@ -18,17 +18,18 @@ jobs:
           echo "$(date -Iminutes)" > log.txt
           echo "Ron Bitton, Rotem Haim" >> log.txt
 
-      - name: Build Docker Images and Check Build Success
+      - name: Build Docker Images without Compose
         run: |
           set +e
-          docker build -t stocks-service -f ./StocksService/Dockerfile .
+          docker build -t stocks-1a:latest -f ./StocksService/Dockerfile .
           EXIT1=$?
-          docker build -t capital-gains-service -f ./CapitalGainsService/Dockerfile .
+          docker build -t capital-gains:latest -f ./CapitalGainsService/Dockerfile .
           EXIT2=$?
           if [ $EXIT1 -eq 0 ] && [ $EXIT2 -eq 0 ]; then
-              echo "image successfully built" >> log.txt
+              echo "images successfully built" >> log.txt
           else
-              echo "image not able to be built" >> log.txt
+              echo "images not able to be built" >> log.txt
+              exit 1
           fi
           set -e
 
