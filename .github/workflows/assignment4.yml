@@ -18,7 +18,7 @@ jobs:
           echo "$(date -Iminutes)" > log.txt
           echo "Ron Bitton, Rotem Haim" >> log.txt
 
-      - name: Build Docker Images without Compose
+      - name: Build Docker Images
         run: |
           set +e
           docker build -t stocks-1a:latest -f ./StocksService/Dockerfile .
@@ -143,7 +143,7 @@ jobs:
           fi
 
   query:
-    name: Run Query
+    name: query
     runs-on: ubuntu-latest
     needs: test
     steps:

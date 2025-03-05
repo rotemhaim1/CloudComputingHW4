@@ -105,7 +105,7 @@ def test_1_create_stocks():
 
     # POST stock1
     response1 = requests.post(f"{BASE_URL}/stocks", json=stock1, timeout=5)
-    assert response1.status_code in (200, 201), f"Expected 200 or 201, got {response1.status_code}. Response: {response1.text}"
+    assert response1.status_code in (201), f"Expected 201, got {response1.status_code}. Response: {response1.text}"
     data1 = response1.json()
     # Try to get the stock id from 'id' or fallback to 'stock_id'
     stock1_id = data1.get("id") or data1.get("stock_id")
@@ -114,7 +114,7 @@ def test_1_create_stocks():
 
     # POST stock2
     response2 = requests.post(f"{BASE_URL}/stocks", json=stock2, timeout=5)
-    assert response2.status_code in (200, 201), f"Expected 200 or 201, got {response2.status_code}. Response: {response2.text}"
+    assert response2.status_code in (201), f"Expected 201, got {response2.status_code}. Response: {response2.text}"
     data2 = response2.json()
     stock2_id = data2.get("id") or data2.get("stock_id")
     assert stock2_id is not None, f"Response for stock2 does not include an id key. Full response: {data2}"
@@ -122,7 +122,7 @@ def test_1_create_stocks():
 
     # POST stock3
     response3 = requests.post(f"{BASE_URL}/stocks", json=stock3, timeout=5)
-    assert response3.status_code in (200, 201), f"Expected 200 or 201, got {response3.status_code}. Response: {response3.text}"
+    assert response3.status_code in (201), f"Expected 201, got {response3.status_code}. Response: {response3.text}"
     data3 = response3.json()
     stock3_id = data3.get("id") or data3.get("stock_id")
     assert stock3_id is not None, f"Response for stock3 does not include an id key. Full response: {data3}"
