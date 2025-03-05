@@ -138,66 +138,46 @@ jobs:
           fi
 
   query:
+    name: Run Query
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download Docker image artifacts from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-images
-          path: ./images
+      - name: Start Docker Compose services
+        run: docker compose up -d
 
-      - name: Load stocks-1a image
-        run: docker load -i ./images/stocks-1a.tar
-
-      - name: Load capital gains image
-        run: docker load -i ./images/capital-gains.tar
-
-      - name: Start Docker Compose services for query job
-        run: |
-          docker compose up -d
-          sleep 15
+      - name: Wait for services
+        run: sleep 15
 
       - name: Issue 6 POST requests to add stocks entries
         run: |
-          # Assumes you have tests/stock1.json ... tests/stock6.json defined
-          for i in {1..6}; do
-            curl -X POST -H "Content-Type: application/json" -d @tests/stock${i}.json http://localhost:5001/stocks
-          done
-
-      - name: Process query.txt and generate response.txt
+          curl -X POST http://localhost:5001/stocks -H "Content-Type: application/json" -d '{"name": "NVIDIA Corporation", "symbol": "NVDA", "purchase price": 134.66, "purchase date": "18-06-2024", "shares": 7}'
+          curl -X POST http://localhost:5001/stocks -H "Content-Type: application/json" -d '{"name": "Apple Inc.", "symbol": "AAPL", "purchase price": 183.63, "purchase date": "22-02-2024", "shares": 19}'
+          curl -X POST http://localhost:5001/stocks -H "Content-Type: application/json" -d '{"name": "Alphabet Inc.", "symbol": "GOOG", "purchase price": 140.12, "purchase date": "24-10-2024", "shares": 14}'
+          curl -X POST http://localhost:5001/stocks -H "Content-Type: application/json" -d '{"name": "Tesla, Inc.", "symbol": "TSLA", "purchase price": 194.58, "purchase date": "28-11-2022", "shares": 32}'
+          curl -X POST http://localhost:5001/stocks -H "Content-Type: application/json" -d '{"name": "Microsoft Corporation", "symbol": "MSFT", "purchase price": 420.55, "purchase date": "09-02-2024", "shares": 35}'
+          curl -X POST http://localhost:5001/stocks -H "Content-Type: application/json" -d '{"name": "Intel Corporation", "symbol": "INTC", "purchase price": 19.15, "purchase date": "13-01-2025", "shares": 10}'
+      
+      - name: Execute Queries from query.txt
         run: |
-          if [ ! -f query.txt ]; then
-            echo "query.txt not found" && exit 1
-          fi
-          rm -f response.txt
           touch response.txt
-          while IFS= read -r line || [ -n "$line" ]; do
-            service=$(echo "$line" | cut -d':' -f1)
-            qs=$(echo "$line" | cut -d':' -f2- | xargs)
-            echo "query: ${service}:${qs}" >> response.txt
-
+          while IFS= read -r line; do
+            SERVICE=$(echo "$line" | cut -d':' -f1)
+            QUERY=$(echo "$line" | cut -d':' -f2-)
+            echo "query: ${SERVICE}:${QUERY}" >> response.txt
             echo "response:" >> response.txt
-            if [ "$service" = "stocks" ]; then
-              curl -s -w "http://127.0.0.1:5001/stocks?${qs}" >> response.txt
-            elif [ "$service" = "capital-gains" ]; then
-              curl -s -w "http://127.0.0.1:5003/capital-gains?${qs}" >> response.txt
-            else
-              echo "Unknown service" >> response.txt
+            if [[ "$SERVICE" == "stocks" ]]; then
+              curl -s "http://localhost:5001/stocks?$QUERY" >> response.txt
+            elif [[ "$SERVICE" == "capital-gains" ]]; then
+              curl -s "http://localhost:5003/capital-gains?$QUERY" >> response.txt
             fi
-            echo "" >> response.txt
           done < query.txt
 
-      - name: Upload query response artifact
+      - name: Upload Respone
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: query-response
+          name: query_responses
           path: response.txt
-
-      - name: Tear down Docker Compose (query job)
-        if: always()
-        run: docker compose down
