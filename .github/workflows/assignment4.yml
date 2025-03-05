@@ -145,6 +145,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Create response.txt File
+        run: touch response.txt
+
       - name: Start Docker Compose services
         run: docker compose up -d
 
