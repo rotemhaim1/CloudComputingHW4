@@ -18,15 +18,19 @@ jobs:
           echo "$(date -Iminutes)" > log.txt
           echo "Ron Bitton, Rotem Haim" >> log.txt
 
-      - name: Build Docker Images using Docker Compose
+      - name: Build Docker Images and Check Build Success
         run: |
-          # Build images for all services defined in your docker-compose.yml
-          if docker compose build --no-cache; then
-            echo "image successfully built" >> log.txt
-            else
-            echo "image not able to be built" >> log.txt
-            exit 1
+          set +e
+          docker build -t stocks-service -f ./StocksService/Dockerfile .
+          EXIT1=$?
+          docker build -t capital-gains-service -f ./CapitalGainsService/Dockerfile .
+          EXIT2=$?
+          if [ $EXIT1 -eq 0 ] && [ $EXIT2 -eq 0 ]; then
+              echo "image successfully built" >> log.txt
+          else
+              echo "image not able to be built" >> log.txt
           fi
+          set -e
 
       - name: Save Docker images as tar files
         run: |
