@@ -166,9 +166,10 @@ jobs:
       - name: Execute Queries from query.txt
         run: |
           touch response.txt
-          while IFS= read -r line; do
+          while IFS= read -r line || [ -n "$line" ]; do
             SERVICE=$(echo "$line" | cut -d':' -f1)
-            QUERY=$(echo "$line" | cut -d':' -f2-)
+            # Remove carriage returns and trim whitespace
+            QUERY=$(echo "$line" | cut -d':' -f2- | tr -d '\r' | xargs)
             echo "query: ${SERVICE}:${QUERY}" >> response.txt
             echo "response:" >> response.txt
             if [[ "$SERVICE" == "stocks" ]]; then
