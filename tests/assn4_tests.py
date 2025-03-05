@@ -21,7 +21,6 @@ def cleanup():
     Deletes all stocks by using the API endpoints.
     This function retrieves all stocks and then deletes each one.
     """
-    print("Running cleanup")
     url = f"{BASE_URL}/stocks"
     get_response = requests.get(url, timeout=5)
     if get_response.status_code == 200:
