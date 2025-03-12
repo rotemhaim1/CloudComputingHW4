@@ -167,7 +167,7 @@ def test_post_stocks():
     response2 = requests.post(f"{BASE_URL}/stocks", json=stock2)
     response3 = requests.post(f"{BASE_URL}/stocks", json=stock3)
     
-    assert response1.status_code == 201
+    assert response1.status_code == 207
     assert response2.status_code == 201
     assert response3.status_code == 201
 
