@@ -98,7 +98,7 @@ def test_1_create_stocks():
     """
     Test 1:
     Execute three POST /stocks requests to add stock1, stock2, and stock3.
-    Accept a successful status code of either 200 or 201.
+    Accept a successful status code of 201.
     Verify that each returns a unique ID under "id" or "stock_id".
     """
     global stock_ids
