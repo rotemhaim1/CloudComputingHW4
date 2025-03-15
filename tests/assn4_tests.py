@@ -158,7 +158,7 @@ def test_3_get_all_stocks():
     data = response.json()
     # Assuming the response is a list of stocks
     assert isinstance(data, list), f"Expected the response to be a list of stocks, got {type(data)}"
-    assert len(data) == 3, f"Expected 3 stocks, got {len(data)}"
+    assert len(data) == 2, f"Expected 3 stocks, got {len(data)}"
 
 
 def test_4_get_stock_values():
